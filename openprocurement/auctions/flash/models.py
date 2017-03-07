@@ -20,7 +20,7 @@ from openprocurement.api.models import (
     LotValue, Bid, Revision, Question,  Cancellation, Contract, Award, Feature,
     Lot, schematics_embedded_role, schematics_default_role, ORA_CODES, WORKING_DAYS,
     validate_features_uniq, validate_items_uniq, validate_lots_uniq, Period,
-    Complaint as BaseComplaint, TZ, get_now, set_parent, ComplaintModelType,
+    Complaint as BaseComplaint, TZ, get_now, set_parent, ComplaintModelType, CANT_DELETE_PERIOD_START_DATE_FROM,
 )
 from openprocurement.auctions.core.models import IAuction, get_auction
 
@@ -59,6 +59,9 @@ class AuctionPeriodEndRequired(PeriodEndRequired):
     def validate_startDate(self, data, period):
         if period and data.get('endDate') and data.get('endDate') < period:
             raise ValidationError(u"period should begin before its end")
+        auction = get_auction(data['__parent__'])
+        if auction.get('revisions') and auction['revisions'][0].date > CANT_DELETE_PERIOD_START_DATE_FROM and not period:
+            raise ValidationError([u'This field cannot be deleted'])
 
 
 def calc_auction_end_time(bids, start):

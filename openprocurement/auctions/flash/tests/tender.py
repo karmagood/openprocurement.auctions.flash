@@ -6,7 +6,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 from openprocurement.api.utils import ROUTE_PREFIX
-from openprocurement.api.models import get_now, SANDBOX_MODE
+from openprocurement.api.models import get_now, SANDBOX_MODE, CANT_DELETE_PERIOD_START_DATE_FROM
 from openprocurement.auctions.flash.models import Auction
 from openprocurement.auctions.flash.tests.base import test_auction_data, test_organization, BaseWebTest, BaseAuctionWebTest
 
@@ -779,6 +779,7 @@ class AuctionResourceTest(BaseWebTest):
 
     def test_auction_features(self):
         data = test_auction_data.copy()
+        data['procuringEntity']['contactPoint']['faxNumber'] = u"0440000000"
         item = data['items'][0].copy()
         item['id'] = "1"
         data['items'] = [item]
@@ -850,9 +851,11 @@ class AuctionResourceTest(BaseWebTest):
         self.assertIn('features', response.json['data'])
         self.assertNotIn('relatedItem', response.json['data']['features'][0])
 
-        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'tenderPeriod': {'startDate': None}}})
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']),
+                                       {'data': {'procuringEntity': {'contactPoint': {'faxNumber': None}}}})
         self.assertEqual(response.status, '200 OK')
         self.assertIn('features', response.json['data'])
+        self.assertNotIn('faxNumber', response.json['data']['procuringEntity']['contactPoint'])
 
         response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'features': []}})
         self.assertEqual(response.status, '200 OK')
@@ -892,11 +895,13 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.content_type, 'application/json')
 
     def test_patch_auction(self):
+        data = test_auction_data.copy()
+        data['procuringEntity']['contactPoint']['faxNumber'] = u"0440000000"
         response = self.app.get('/auctions')
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(len(response.json['data']), 0)
 
-        response = self.app.post_json('/auctions', {'data': test_auction_data})
+        response = self.app.post_json('/auctions', {'data': data})
         self.assertEqual(response.status, '201 Created')
         auction = response.json['data']
         owner_token = response.json['access']['token']
@@ -918,13 +923,13 @@ class AuctionResourceTest(BaseWebTest):
         self.assertNotIn('kind', response.json['data']['procuringEntity'])
 
         response = self.app.patch_json('/auctions/{}'.format(
-            auction['id']), {'data': {'tenderPeriod': {'startDate': None}}})
+            auction['id']), {'data': {'procuringEntity': {'contactPoint': {'faxNumber': None}}}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
-        self.assertNotIn('startDate', response.json['data']['tenderPeriod'])
+        self.assertNotIn('faxNumber', response.json['data']['procuringEntity']['contactPoint'])
 
         response = self.app.patch_json('/auctions/{}'.format(
-            auction['id']), {'data': {'tenderPeriod': {'startDate': auction['enquiryPeriod']['endDate']}}})
+            auction['id']), {'data': {'procuringEntity': {'contactPoint': {'faxNumber': u"0440000000"}}}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertIn('startDate', response.json['data']['tenderPeriod'])
@@ -953,12 +958,12 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(revisions[-1][u'changes'][0]['path'], u'/procurementMethodRationale')
 
         response = self.app.patch_json('/auctions/{}'.format(
-            auction['id']), {'data': {'items': [test_auction_data['items'][0]]}})
+            auction['id']), {'data': {'items': [data['items'][0]]}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
 
         response = self.app.patch_json('/auctions/{}'.format(
-            auction['id']), {'data': {'items': [{}, test_auction_data['items'][0]]}})
+            auction['id']), {'data': {'items': [{}, data['items'][0]]}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         item0 = response.json['data']['items'][0]
@@ -1022,6 +1027,34 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.status, '403 Forbidden')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['errors'][0]["description"], "Can't update auction in current (complete) status")
+
+        @unittest.skipIf(get_now() < CANT_DELETE_PERIOD_START_DATE_FROM,
+                         "Can`t delete period start date only from {}".format(CANT_DELETE_PERIOD_START_DATE_FROM))
+        def test_required_field_deletion(self):
+            response = self.app.post_json('/auctions', {'data': test_auction_data})
+            self.assertEqual(response.status, '201 Created')
+            tender = response.json['data']
+
+            # TODO: Test all the required fields
+            response = self.app.patch_json('/auctions/{}'.format(
+                auction['id']), {'data': {'enquiryPeriod': {'startDate': None}}}, status=422)
+            self.assertEqual(response.status, '422 Unprocessable Entity')
+            self.assertEqual(response.content_type, 'application/json')
+            self.assertEqual(response.json['status'], 'error')
+            self.assertEqual(response.json['errors'], [
+                {u'description': {u'startDate': [u'This field cannot be deleted']}, u'location': u'body',
+                 u'name': u'enquiryPeriod'}
+            ])
+
+            response = self.app.patch_json('/auctions/{}'.format(
+                auction['id']), {'data': {'tenderPeriod': {'startDate': None}}}, status=422)
+            self.assertEqual(response.status, '422 Unprocessable Entity')
+            self.assertEqual(response.content_type, 'application/json')
+            self.assertEqual(response.json['status'], 'error')
+            self.assertEqual(response.json['errors'], [
+                {u'description': {u'startDate': [u'This field cannot be deleted']}, u'location': u'body',
+                 u'name': u'tenderPeriod'}
+            ])
 
     def test_dateModified_auction(self):
         response = self.app.get('/auctions')

@@ -7,18 +7,6 @@ from openprocurement.auctions.flash.tests.base import BaseAuctionWebTest, test_l
 
 class AuctionSwitchtenderingResourceTest(BaseAuctionWebTest):
 
-    def test_switch_to_tendering_by_enquiryPeriod_endDate(self):
-        self.app.authorization = ('Basic', ('chronograph', ''))
-        response = self.app.patch_json('/auctions/{}'.format(self.auction_id), {'data': {'id': self.auction_id}})
-        self.assertEqual(response.status, '200 OK')
-        date_1 = response.json['data']['date']
-        self.assertNotEqual(response.json['data']["status"], "active.tendering")
-        self.set_status('active.tendering', {'status': 'active.enquiries', "tenderPeriod": {"startDate": None}})
-        response = self.app.patch_json('/auctions/{}'.format(self.auction_id), {'data': {'id': self.auction_id}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.json['data']["status"], "active.tendering")
-        self.assertNotEqual(date_1, response.json['data']['date'])
-
     def test_switch_to_tendering_by_auctionPeriod_startDate(self):
         self.set_status('active.tendering', {'status': 'active.enquiries', "tenderPeriod": {}})
         self.app.authorization = ('Basic', ('chronograph', ''))
@@ -29,14 +17,6 @@ class AuctionSwitchtenderingResourceTest(BaseAuctionWebTest):
         response = self.app.patch_json('/auctions/{}'.format(self.auction_id), {'data': {'id': self.auction_id}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.json['data']["status"], "active.tendering")
-
-    def test_switch_to_tendering_auctionPeriod(self):
-        self.set_status('active.tendering', {'status': 'active.enquiries', "tenderPeriod": {"startDate": None}})
-        self.app.authorization = ('Basic', ('chronograph', ''))
-        response = self.app.patch_json('/auctions/{}'.format(self.auction_id), {'data': {'id': self.auction_id}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.json['data']["status"], "active.tendering")
-        self.assertIn('auctionPeriod', response.json['data'])
 
 
 class AuctionSwitchQualificationResourceTest(BaseAuctionWebTest):
