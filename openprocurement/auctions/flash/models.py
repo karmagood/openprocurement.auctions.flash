@@ -20,7 +20,7 @@ from openprocurement.api.models import (
     LotValue, Bid, Revision, Question,  Cancellation, Contract, Award, Feature,
     Lot, schematics_embedded_role, schematics_default_role, ORA_CODES, WORKING_DAYS,
     validate_features_uniq, validate_items_uniq, validate_lots_uniq, Period,
-    Complaint as BaseComplaint, TZ, get_now, set_parent, ComplaintModelType, CANT_DELETE_PERIOD_START_DATE_FROM,
+    Complaint as BaseComplaint, TZ, get_now, set_parent, ComplaintModelType,
 )
 from openprocurement.auctions.core.models import IAuction, get_auction
 
@@ -29,7 +29,7 @@ COMPLAINT_STAND_STILL_TIME = timedelta(days=3)
 BIDDER_TIME = timedelta(minutes=3 * 3)
 SERVICE_TIME = timedelta(minutes=5 + 3 + 3)
 AUCTION_STAND_STILL_TIME = timedelta(minutes=15)
-
+CANT_DELETE_PERIOD_START_DATE_FROM = datetime(2017, 3, 18, tzinfo=TZ)
 
 def read_json(name):
     import os.path

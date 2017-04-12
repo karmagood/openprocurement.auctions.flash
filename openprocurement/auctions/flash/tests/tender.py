@@ -6,8 +6,8 @@ from datetime import timedelta
 from uuid import uuid4
 
 from openprocurement.api.utils import ROUTE_PREFIX
-from openprocurement.api.models import get_now, SANDBOX_MODE, CANT_DELETE_PERIOD_START_DATE_FROM
-from openprocurement.auctions.flash.models import Auction
+from openprocurement.api.models import get_now, SANDBOX_MODE
+from openprocurement.auctions.flash.models import Auction, CANT_DELETE_PERIOD_START_DATE_FROM
 from openprocurement.auctions.flash.tests.base import test_auction_data, test_organization, BaseWebTest, BaseAuctionWebTest
 
 
